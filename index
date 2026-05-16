@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- GitHub Pages Meta Data -->
+    <meta name="description" content="Void Signal Processor // MK-III Modular. A Web Audio API experimental signal chain with true analog-style ring modulation.">
+    <meta name="keywords" content="Web Audio API, Signal Processing, Ring Modulator, DSP, Modular Synthesizer, JavaScript">
+    <meta name="author" content="Your Name / GitHub Username">
+    
+    <title>Void Signal Processor // MK-III Modular</title>
+    <style>
+        :root {
+            --bg-color: #0d0d0d;
+            --main-color: #00ff41;
+            --warn-color: #ffae00;
+            --rec-color: #ff0000;
+            --dim-color: #003b0f;
+            --text-font: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--main-color);
+            font-family: var(--text-font);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--main-color) var(--bg-color);
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--dim-color); border: 1px solid var(--main-color); }
+
+        /* GitHub Corner Ribbon */
+        .github-corner:hover .octo-arm { animation: octocat-wave 560ms ease-in-out; }
+        @keyframes octocat-wave { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(-25deg); } 40%, 80% { transform: rotate(10deg); } }
+        @media (max-width: 500px) {
+            .github-corner:hover .octo-arm { animation: none; }
+            .github-corner .octo-arm { animation: octocat-wave 560ms ease-in-out; }
+        }
+
+        h1 {
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            border-bottom: 2px solid var(--main-color);
+            padding-bottom: 10px;
+            text-shadow: 0 0 10px var(--dim-color);
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        #controls {
+            margin: 20px 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 1100px;
+            background: #111;
+            padding: 15px;
+            border: 1px solid var(--dim-color);
+            position: relative;
+        }
+
+        .buttons-container {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+        }
+
+        button, .file-upload-label {
+            background: var(--bg-color);
+            color: var(--main-color);
+            border: 1px solid var(--main-color);
+            padding: 8px 15px;
+            font-family: var(--text-font);
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            text-align: center;
+            display: inline-block;
+            font-size: 0.85em;
+        }
+
+        button:hover, .file-upload-label:hover {
+            background: var(--main-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 10px var(--main-color);
+        }
+
+        button:disabled, select:disabled {
+            border-color: var(--dim-color);
+            color: var(--dim-color);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        input[type="file"] { display: none; }
+
+        #recBtn.recording {
+            background-color: var(--rec-color);
+            color: var(--bg-color);
+            border-color: var(--rec-color);
+            box-shadow: 0 0 15px var(--rec-color);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px var(--rec-color); }
+            50% { box-shadow: 0 0 20px var(--rec-color); }
+            100% { box-shadow: 0 0 5px var(--rec-color); }
+        }
+
+        .module {
+            border: 1px solid var(--dim-color);
+            padding: 10px;
+            background: #0a0a0a;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .module-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--dim-color);
+            margin-bottom: 10px;
+            padding: 2px 5px;
+        }
+
+        .module-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            color: var(--main-color);
+            font-size: 0.85em;
+            letter-spacing: 1px;
+        }
+
+        .routing-controls button {
+            padding: 2px 6px;
+            font-size: 0.7em;
+            margin-left: 2px;
+            border-color: #000;
+        }
+
+        .chain-index {
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            background: var(--main-color);
+            color: black;
+            font-size: 0.7em;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            font-size: 0.8em;
+        }
+        
+        .slider-group label {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: #222;
+            height: 4px;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--main-color);
+            cursor: pointer;
+            border: 1px solid var(--bg-color);
+        }
+
+        select {
+            background: var(--bg-color);
+            color: var(--main-color);
+            border: 1px solid var(--dim-color);
+            padding: 4px;
+            font-family: var(--text-font);
+            margin-top: 5px;
+            cursor: pointer;
+            text-transform: uppercase;
+            width: 100%;
+            font-size: 0.8em;
+        }
+
+        canvas {
+            background-color: #050505;
+            border: 1px solid var(--dim-color);
+            width: 100%;
+            max-width: 1100px;
+            height: 150px;
+            box-shadow: 0 0 10px var(--dim-color);
+            margin-bottom: 10px;
+        }
+
+        .status {
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: var(--dim-color);
+            text-align: center;
+        }
+        
+        .limiter-led {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #330000;
+            display: inline-block;
+            margin-left: 5px;
+            border: 1px solid #550000;
+        }
+        
+        .limiter-led.active {
+            background: #ff0000;
+            box-shadow: 0 0 10px #ff0000;
+        }
+
+        .gate-led {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #003300;
+            display: inline-block;
+            margin-left: 8px;
+            border: 1px solid #005500;
+            vertical-align: middle;
+        }
+        
+        .gate-led.active {
+            background: #00ff41;
+            box-shadow: 0 0 10px #00ff41;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- GitHub Corner -->
+    <a href="https://github.com/YOUR-USERNAME/YOUR-REPO" class="github-corner" aria-label="View source on GitHub" target="_blank" rel="noopener">
+        <svg width="80" height="80" viewBox="0 0 250 250" style="fill:#00ff41; color:#0d0d0d; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true">
+            <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+            <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
+            <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path>
+        </svg>
+    </a>
+
+    <h1>Void Processor <span style="font-size:0.5em; vertical-align:middle; color:var(--warn-color);">// MK-III MODULAR</span></h1>
+
+    <div style="width: 100%; max-width: 1100px; display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.8em;">
+        <span>VISUALIZER MODE</span>
+        <select id="visMode" style="width: auto; padding: 2px; margin: 0;" aria-label="Visualizer Mode">
+            <option value="wave">Waveform</option>
+            <option value="spectrum">Spectrum (FFT)</option>
+        </select>
+    </div>
+    <canvas id="oscilloscope" aria-label="Audio Visualizer"></canvas>
+
+    <div id="controls">
+        
+        <!-- SYSTEM CONTROLS -->
+        <div class="buttons-container">
+            <button id="startBtn">Init Audio</button>
+            <button id="stopBtn" disabled>Kill Audio</button>
+            
+            <label class="file-upload-label" style="border-color:#555; color:#aaa;" id="loadAudioLabel">
+                Load Audio
+                <input type="file" id="audioUpload" accept="audio/*">
+            </label>
+            <button id="clearFileBtn" style="border-color:#ff0000; color:#ff0000; display:none;">Clear Audio</button>
+            
+            <button id="recBtn" disabled>Rec Audio</button>
+            
+            <div style="border-left: 1px solid #333; height: 30px; margin: 0 10px;"></div>
+            
+            <button id="savePatchBtn" style="border-color: #00aaff; color: #00aaff;">Save Patch</button>
+            <label class="file-upload-label" style="border-color: #00aaff; color: #00aaff;">
+                Load Patch
+                <input type="file" id="patchUpload" accept=".json">
+            </label>
+            
+            <select id="bufferSizeSel" style="margin: 0; padding: 5px; width: auto; font-weight: bold;" title="Requires restart" aria-label="Buffer Size">
+                <option value="4096">Buf: 4096</option>
+                <option value="1024">Buf: 1024</option>
+            </select>
+        </div>
+
+        <!-- 0. SOURCE & NOISE GATE (FIXED HEAD) -->
+        <div class="module" id="headModule">
+            <div class="chain-index">0</div>
+            <div class="module-header" style="justify-content: center;">
+                <span class="module-title">Source & True RingMod</span>
+            </div>
+            <div class="slider-group">
+                <label>Input Gain <span id="micGainVal">1.0</span></label>
+                <input type="range" id="micGain" min="0" max="5" step="0.1" value="1">
+            </div>
+            <div class="slider-group" style="border-top: 1px dashed #333; border-bottom: 1px dashed #333; padding: 10px 0; margin: 10px 0;">
+                <label style="color:var(--main-color);">
+                    <span><input type="checkbox" id="gateToggle" style="vertical-align: middle;"> Noise Gate <span class="gate-led" id="gateLed"></span></span>
+                    <span><span id="gateThreshVal">-40</span>dB</span>
+                </label>
+                <input type="range" id="gateThresh" min="-80" max="-10" step="1" value="-40">
+            </div>
+
+            <!-- ENHANCED TRUE RING MOD -->
+            <div class="slider-group">
+                <label style="color:var(--warn-color);">Analog Diode Drive <span id="rmDriveVal">0</span></label>
+                <input type="range" id="rmDrive" min="0" max="100" step="1" value="0">
+            </div>
+            <div class="slider-group">
+                <label style="color:var(--warn-color);">RM Wet Mix <span id="rmDepthVal">0.5</span></label>
+                <input type="range" id="rmDepth" min="0" max="1" step="0.05" value="0.5">
+            </div>
+            <div class="slider-group" style="margin-top: 5px;">
+                <label>Carrier Wave</label>
+                <select id="carrierWave">
+                    <option value="sine">Sine</option>
+                    <option value="triangle">Triangle</option>
+                    <option value="square">Square</option>
+                    <option value="sawtooth">Sawtooth</option>
+                </select>
+            </div>
+            <div class="slider-group">
+                <label>Carrier Freq <span id="freqVal">100</span>Hz</label>
+                <input type="range" id="freq" min="20" max="1000" value="100">
+            </div>
+            <div class="slider-group" style="border-top: 1px dashed #333; padding-top: 5px;">
+                <label>LFO Wave</label>
+                <select id="lfoWave">
+                    <option value="sine">Sine</option>
+                    <option value="triangle">Triangle</option>
+                    <option value="square">Square</option>
+                    <option value="sawtooth">Sawtooth</option>
+                </select>
+            </div>
+            <div class="slider-group">
+                <label>LFO Rate <span id="lfoRateVal">2</span>Hz</label>
+                <input type="range" id="lfoRate" min="0" max="15" step="0.1" value="2">
+            </div>
+             <div class="slider-group">
+                <label>LFO Depth <span id="lfoDepthVal">500</span></label>
+                <input type="range" id="lfoDepth" min="0" max="2000" step="10" value="500">
+            </div>
+        </div>
+
+        <!-- REORDERABLE BLOCKS START -->
+
+        <!-- FILTER -->
+        <div class="module reorderable" data-id="filter">
+            <div class="chain-index">1</div>
+            <div class="module-header">
+                <span class="module-title">Spectral Filter</span>
+                <span class="routing-controls">
+                    <button onclick="moveModuleUp(this)">▲</button>
+                    <button onclick="moveModuleDown(this)">▼</button>
+                </span>
+            </div>
+            <div class="slider-group">
+                <label>Type</label>
+                <select id="filterType">
+                    <option value="bandpass">Bandpass</option>
+                    <option value="highpass">Highpass</option>
+                    <option value="lowpass">Lowpass</option>
+                    <option value="notch">Notch</option>
+                </select>
+            </div>
+            <div class="slider-group">
+                <label>Freq <span id="filterFreqVal">1000</span>Hz</label>
+                <input type="range" id="filterFreq" min="50" max="5000" value="1000">
+            </div>
+            <div class="slider-group">
+                <label>Q (Res) <span id="filterQVal">1</span></label>
+                <input type="range" id="filterQ" min="0.1" max="20" step="0.1" value="1">
+            </div>
+        </div>
+
+        <!-- COMB FILTER -->
+        <div class="module reorderable" data-id="comb">
+            <div class="chain-index">2</div>
+            <div class="module-header">
+                <span class="module-title">Comb Resonator</span>
+                <span class="routing-controls">
+                    <button onclick="moveModuleUp(this)">▲</button>
+                    <button onclick="moveModuleDown(this)">▼</button>
+                </span>
+            </div>
+            <div class="slider-group">
+                <label>Delay <span id="combDelayVal">5</span>ms</label>
+                <input type="range" id="combDelay" min="0.1" max="25" step="0.1" value="5">
+            </div>
+            <div class="slider-group">
+                <label>Feedback <span id="combFeedVal">0.7</span></label>
+                <input type="range" id="combFeed" min="-0.99" max="0.99" step="0.01" value="0.7">
+            </div>
+             <div class="slider-group">
+                <label>Mix <span id="combMixVal">0.5</span></label>
+                <input type="range" id="combMix" min="0" max="1" step="0.05" value="0.5">
+            </div>
+        </div>
+
+        <!-- BITCRUSH -->
+        <div class="module reorderable" data-id="crush">
+            <div class="chain-index">3</div>
+            <div class="module-header">
+                <span class="module-title">Bitcrusher</span>
+                <span class="routing-controls">
+                    <button onclick="moveModuleUp(this)">▲</button>
+                    <button onclick="moveModuleDown(this)">▼</button>
+                </span>
+            </div>
+            <div class="slider-group">
+                <label>Bit Depth <span id="bitsVal">8</span></label>
+                <input type="range" id="bits" min="1" max="16" step="1" value="8">
+            </div>
+            <div class="slider-group">
+                <label>Sample Redux <span id="normVal">1</span></label>
+                <input type="range" id="norm" min="1" max="50" step="1" value="1">
+            </div>
+            <div class="slider-group">
+                <label>Wet Mix <span id="crushMixVal">1.0</span></label>
+                <input type="range" id="crushMix" min="0" max="1" step="0.1" value="1.0">
+            </div>
+        </div>
+
+        <!-- HARMONICS -->
+        <div class="module reorderable" data-id="harmonics">
+            <div class="chain-index">4</div>
+            <div class="module-header">
+                <span class="module-title">Harmonics</span>
+                <span class="routing-controls">
+                    <button onclick="moveModuleUp(this)">▲</button>
+                    <button onclick="moveModuleDown(this)">▼</button>
+                </span>
+            </div>
+            <div class="slider-group">
+                <label>Drive <span id="distVal">0</span></label>
+                <input type="range" id="distortion" min="0" max="400" value="0">
+            </div>
+            <div class="slider-group">
+                <label>Echo Time <span id="delayTimeVal">0.3</span>s</label>
+                <input type="range" id="delayTime" min="0" max="1" step="0.01" value="0.3">
+            </div>
+            <div class="slider-group">
+                <label>Echo Feed <span id="echoFeedVal">0</span></label>
+                <input type="range" id="echoFeedback" min="0" max="0.8" step="0.01" value="0">
+            </div>
+        </div>
+
+        <!-- REORDERABLE BLOCKS END -->
+
+        <!-- 5. LIMITER (FIXED TAIL) -->
+        <div class="module" id="limiterModule" style="border-color: var(--warn-color);">
+            <div class="chain-index" style="background:var(--warn-color)">5</div>
+            <div class="module-header" style="justify-content: center; background:var(--dim-color);">
+                <span class="module-title" style="color:var(--warn-color)">Brickwall Limiter</span>
+            </div>
+            <div class="slider-group">
+                <label>Threshold <span id="limitThreshVal">-1.0</span>dB</label>
+                <input type="range" id="limitThresh" min="-40" max="0" step="1" value="-1">
+            </div>
+            <div class="slider-group">
+                <label>Activity <span class="limiter-led" id="limitLed"></span></label>
+                <div style="font-size: 0.7em; color:#666; margin-top:5px;">Safety Ceiling Active</div>
+            </div>
+             <div class="slider-group" style="margin-top:10px; border-top:1px dashed #333; padding-top:5px;">
+                <label>MASTER VOL</label>
+                <input type="range" id="gain" min="0" max="1" step="0.01" value="0.7">
+            </div>
+        </div>
+    </div>
+
+    <div class="status" id="statusText">System Standby. Awaiting Signal Source.</div>
+
+    <script>
+        /**
+         * Void Signal Processor // MK-III Modular
+         * An interactive Web Audio API playground capable of True Analog-Style Ring Modulation.
+         * 
+         * LICENSE: MIT
+         * Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+         * software and associated documentation files, to use, copy, modify, merge, publish, 
+         * distribute, sublicense, and/or sell copies of the Software.
+         */
+
+        // ============================
+        // DOM Elements & Registry
+        // ============================
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const recBtn = document.getElementById('recBtn');
+        const audioUpload = document.getElementById('audioUpload');
+        const clearFileBtn = document.getElementById('clearFileBtn');
+        const loadAudioLabel = document.getElementById('loadAudioLabel');
+        const savePatchBtn = document.getElementById('savePatchBtn');
+        const patchUpload = document.getElementById('patchUpload');
+        const bufferSizeSel = document.getElementById('bufferSizeSel');
+        const visModeSel = document.getElementById('visMode');
+        
+        const canvas = document.getElementById('oscilloscope');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('statusText');
+        const limitLed = document.getElementById('limitLed');
+        const gateLed = document.getElementById('gateLed');
+
+        // Parameter Registry for Save/Load Features
+        const parameterIds = [
+            'micGain', 'gateToggle', 'gateThresh', 'rmDrive', 'rmDepth', 'carrierWave', 'freq', 
+            'lfoWave', 'lfoRate', 'lfoDepth', 'filterType', 'filterFreq', 'filterQ', 
+            'combDelay', 'combFeed', 'combMix', 'bits', 'norm', 'crushMix', 
+            'distortion', 'delayTime', 'echoFeedback', 'limitThresh', 'gain'
+        ];
+
+        // ============================
+        // Audio Globals
+        // ============================
+        let ac, micStream, micSource, offlineAudioBuffer, offlineBufferSource;
+        let isRunning = false;
+        let dynamicsInterval;
+        let mediaRecorder, chunks = [];
+        
+        // Routing Core
+        let step0Out, limiterIn;
+        const fxBlocks = {
+            filter: { in: null, out: null },
+            comb: { in: null, out: null },
+            crush: { in: null, out: null },
+            harmonics: { in: null, out: null }
+        };
+
+        const updateLabel = (id, val) => {
+            const el = document.getElementById(id);
+            if(el) el.innerText = val;
+        };
+
+        // ============================
+        // Modular Reordering Logic
+        // ============================
+        function moveModuleUp(btn) {
+            const moduleEl = btn.closest('.reorderable');
+            const prev = moduleEl.previousElementSibling;
+            if (prev && prev.classList.contains('reorderable')) {
+                moduleEl.parentNode.insertBefore(moduleEl, prev);
+                rebuildRouting();
+            }
+        }
+
+        function moveModuleDown(btn) {
+            const moduleEl = btn.closest('.reorderable');
+            const next = moduleEl.nextElementSibling;
+            if (next && next.classList.contains('reorderable')) {
+                moduleEl.parentNode.insertBefore(next, moduleEl);
+                rebuildRouting();
+            }
+        }
+
+        function rebuildRouting() {
+            const allModules = document.querySelectorAll('.module');
+            allModules.forEach((mod, index) => {
+                mod.querySelector('.chain-index').innerText = index;
+            });
+
+            if (!isRunning) return;
+
+            step0Out.disconnect();
+            fxBlocks.filter.out.disconnect();
+            fxBlocks.comb.out.disconnect();
+            fxBlocks.crush.out.disconnect();
+            fxBlocks.harmonics.out.disconnect();
+
+            const currentOrder = Array.from(document.querySelectorAll('.reorderable')).map(el => el.getAttribute('data-id'));
+            
+            let currentConnection = step0Out;
+            currentOrder.forEach(id => {
+                currentConnection.connect(fxBlocks[id].in);
+                currentConnection = fxBlocks[id].out;
+            });
+            
+            currentConnection.connect(limiterIn);
+            console.log("Graph rebuilt. Order:", currentOrder);
+        }
+
+        // ============================
+        // Patch Saving & Loading
+        // ============================
+        savePatchBtn.addEventListener('click', () => {
+            const patch = {};
+            parameterIds.forEach(id => {
+                const el = document.getElementById(id);
+                patch[id] = el.type === 'checkbox' ? el.checked : el.value;
+            });
+            patch.order = Array.from(document.querySelectorAll('.reorderable')).map(el => el.getAttribute('data-id'));
+
+            const blob = new Blob([JSON.stringify(patch, null, 2)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'void_patch_' + Date.now() + '.json';
+            a.click();
+        });
+
+        patchUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const patch = JSON.parse(ev.target.result);
+                    parameterIds.forEach(id => {
+                        if (patch[id] !== undefined) {
+                            const el = document.getElementById(id);
+                            if (el.type === 'checkbox') el.checked = patch[id];
+                            else el.value = patch[id];
+                            el.dispatchEvent(new Event('input'));
+                            el.dispatchEvent(new Event('change'));
+                        }
+                    });
+
+                    if (patch.order) {
+                        const container = document.getElementById('controls');
+                        const limiterNode = document.getElementById('limiterModule');
+                        patch.order.forEach(id => {
+                            const modEl = document.querySelector(`.reorderable[data-id="${id}"]`);
+                            if (modEl) container.insertBefore(modEl, limiterNode);
+                        });
+                        rebuildRouting();
+                    }
+                    statusText.innerText = "PATCH LOADED SUCCESSFULLY.";
+                    statusText.style.color = "#00ff41";
+                } catch (err) {
+                    statusText.innerText = "PATCH LOAD FAILED. CORRUPT DATA.";
+                    statusText.style.color = "#ff0000";
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // ============================
+        // Audio Offline Loading
+        // ============================
+        audioUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            statusText.innerText = "DECODING OFFLINE AUDIO DATA...";
+            statusText.style.color = "#ffae00";
+            
+            reader.onload = async (ev) => {
+                if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+                offlineAudioBuffer = await ac.decodeAudioData(ev.target.result);
+                statusText.innerText = `BUFFER LOADED [${file.name}]. CLICK INIT AUDIO.`;
+                statusText.style.color = "#00ff41";
+                clearFileBtn.style.display = 'inline-block';
+                loadAudioLabel.style.display = 'none';
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        clearFileBtn.addEventListener('click', () => {
+            offlineAudioBuffer = null;
+            audioUpload.value = '';
+            clearFileBtn.style.display = 'none';
+            loadAudioLabel.style.display = 'inline-block';
+            statusText.innerText = "AUDIO FILE CLEARED. MIC MODE READY.";
+            statusText.style.color = "#00ff41";
+        });
+
+        // ============================
+        // Audio Engine Init
+        // ============================
+        startBtn.addEventListener('click', async () => {
+            try {
+                if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+                if (ac.state === 'suspended') await ac.resume();
+
+                statusText.innerText = "Initializing Audio Bus...";
+                
+                if (offlineAudioBuffer) {
+                    offlineBufferSource = ac.createBufferSource();
+                    offlineBufferSource.buffer = offlineAudioBuffer;
+                    offlineBufferSource.loop = true;
+                    micSource = offlineBufferSource;
+                    statusText.innerText = "PROCESSING OFFLINE SIGNAL (FILE MODE ACTIVE)";
+                } else {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error("Browser sandbox blocked mic API. You must use a Local Server or HTTPS.");
+                    }
+                    
+                    micStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
+                    });
+                    micSource = ac.createMediaStreamSource(micStream);
+                    statusText.innerText = "PROCESSING LIVE MIC SIGNAL";
+                }
+
+                buildEngineNodes();
+                rebuildRouting();
+                
+                if(offlineBufferSource) offlineBufferSource.start();
+                
+                startBtn.disabled = true; 
+                stopBtn.disabled = false; 
+                recBtn.disabled = false;
+                bufferSizeSel.disabled = true; 
+                isRunning = true;
+                
+                statusText.style.color = "#00ff41";
+                drawScope();
+                monitorDynamics();
+            } catch (err) {
+                statusText.innerText = "MIC FAILED: " + err.message;
+                statusText.style.color = "#ff0000";
+                console.error("Audio Engine Error:", err);
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (ac) {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+                if (offlineBufferSource) {
+                    try { offlineBufferSource.stop(); } catch(e){}
+                }
+                if (micStream) micStream.getTracks().forEach(t => t.stop());
+                
+                ac.close();
+                ac = null;
+                isRunning = false;
+                clearInterval(dynamicsInterval);
+                
+                startBtn.disabled = false; 
+                stopBtn.disabled = true; 
+                recBtn.disabled = true;
+                bufferSizeSel.disabled = false;
+                
+                statusText.innerText = "SIGNAL TERMINATED";
+                statusText.style.color = "#ffae00";
+                limitLed.classList.remove('active');
+                gateLed.classList.remove('active');
+            }
+        });
+
+        recBtn.addEventListener('click', () => {
+            if (recBtn.classList.contains('recording')) {
+                mediaRecorder.stop();
+                recBtn.innerText = "Rec Audio";
+                recBtn.classList.remove("recording");
+            } else {
+                chunks = [];
+                mediaRecorder.start();
+                recBtn.innerText = "Stop Rec";
+                recBtn.classList.add("recording");
+            }
+        });
+
+        // ============================
+        // DSP Node Construction
+        // ============================
+        let micGainNode, gateGain, gateAnalyser; 
+        let rmOsc, rmLfo, rmWet, rmDry, lfoAmp, rmDriveNode; 
+        let filterNode;
+        let combDelayNode, combFeedNode, combWet, combDry;
+        let crusherNode, crushWet, crushDry;
+        let distNode, echoDelay, echoFeed;
+        let limiterNode;
+        let masterGain, analyser, destNode;
+
+        function buildEngineNodes() {
+            step0Out = ac.createGain();
+            
+            micGainNode = ac.createGain();
+            micGainNode.gain.value = document.getElementById('micGain').value;
+            micSource.connect(micGainNode);
+
+            gateAnalyser = ac.createAnalyser();
+            gateAnalyser.fftSize = 256; 
+            micGainNode.connect(gateAnalyser); 
+            
+            gateGain = ac.createGain();
+            gateGain.gain.value = 1.0;
+            micGainNode.connect(gateGain);
+
+            // True Ring Mod Implementation (Multiplication via Gain Node Phase flipping)
+            rmOsc = ac.createOscillator();
+            rmOsc.type = document.getElementById('carrierWave').value;
+            rmOsc.frequency.value = document.getElementById('freq').value;
+            rmOsc.start();
+
+            rmLfo = ac.createOscillator();
+            rmLfo.type = document.getElementById('lfoWave').value;
+            rmLfo.frequency.value = document.getElementById('lfoRate').value;
+            rmLfo.start();
+            
+            lfoAmp = ac.createGain();
+            lfoAmp.gain.value = document.getElementById('lfoDepth').value; 
+            rmLfo.connect(lfoAmp).connect(rmOsc.frequency);
+
+            // Added Analog Diode Circuit Emulation (Waveshaping the input prior to RM)
+            rmDriveNode = ac.createWaveShaper();
+            rmDriveNode.curve = makeDiodeCurve(document.getElementById('rmDrive').value);
+            rmDriveNode.oversample = '4x';
+
+            const ringModulator = ac.createGain();
+            ringModulator.gain.value = 0; // True ring mod rests at 0 (null carrier)
+            
+            gateGain.connect(rmDriveNode);
+            rmDriveNode.connect(ringModulator); 
+            rmOsc.connect(ringModulator.gain); // Bipolar audio-rate modulation
+            
+            rmWet = ac.createGain();
+            rmDry = ac.createGain();
+            rmWet.gain.value = document.getElementById('rmDepth').value;
+            rmDry.gain.value = 1 - rmWet.gain.value;
+
+            gateGain.connect(rmDry); 
+            ringModulator.connect(rmWet);
+            rmDry.connect(step0Out);
+            rmWet.connect(step0Out);
+
+            // Spectral Filter
+            fxBlocks.filter.in = ac.createGain();
+            fxBlocks.filter.out = ac.createGain();
+            filterNode = ac.createBiquadFilter();
+            filterNode.type = document.getElementById('filterType').value;
+            filterNode.frequency.value = document.getElementById('filterFreq').value;
+            filterNode.Q.value = document.getElementById('filterQ').value;
+            
+            fxBlocks.filter.in.connect(filterNode);
+            filterNode.connect(fxBlocks.filter.out);
+
+            // Comb Filter
+            fxBlocks.comb.in = ac.createGain();
+            fxBlocks.comb.out = ac.createGain();
+            combDelayNode = ac.createDelay(1.0);
+            combDelayNode.delayTime.value = document.getElementById('combDelay').value / 1000; 
+            combFeedNode = ac.createGain();
+            combFeedNode.gain.value = document.getElementById('combFeed').value;
+            combWet = ac.createGain();
+            combDry = ac.createGain();
+            combWet.gain.value = document.getElementById('combMix').value;
+            combDry.gain.value = 1 - combWet.gain.value;
+
+            fxBlocks.comb.in.connect(combDry);
+            fxBlocks.comb.in.connect(combDelayNode);
+            combDelayNode.connect(combFeedNode);
+            combFeedNode.connect(combDelayNode); 
+            combDelayNode.connect(combWet); 
+            combDry.connect(fxBlocks.comb.out);
+            combWet.connect(fxBlocks.comb.out);
+
+            // Bitcrusher
+            fxBlocks.crush.in = ac.createGain();
+            fxBlocks.crush.out = ac.createGain();
+            const chosenBufferSize = parseInt(bufferSizeSel.value, 10);
+            crusherNode = ac.createScriptProcessor(chosenBufferSize, 1, 1);
+            crusherNode.onaudioprocess = processBitcrush;
+            crushWet = ac.createGain();
+            crushDry = ac.createGain();
+            crushWet.gain.value = document.getElementById('crushMix').value;
+            crushDry.gain.value = 1 - crushWet.gain.value;
+
+            fxBlocks.crush.in.connect(crushDry);
+            fxBlocks.crush.in.connect(crusherNode);
+            crusherNode.connect(crushWet);
+            crushDry.connect(fxBlocks.crush.out);
+            crushWet.connect(fxBlocks.crush.out);
+
+            // Harmonics
+            fxBlocks.harmonics.in = ac.createGain();
+            fxBlocks.harmonics.out = ac.createGain();
+            distNode = ac.createWaveShaper();
+            distNode.curve = makeDistortionCurve(document.getElementById('distortion').value);
+            distNode.oversample = '4x';
+            
+            echoDelay = ac.createDelay(2.0);
+            echoDelay.delayTime.value = document.getElementById('delayTime').value;
+            echoFeed = ac.createGain();
+            echoFeed.gain.value = document.getElementById('echoFeedback').value;
+
+            fxBlocks.harmonics.in.connect(distNode);
+            distNode.connect(echoDelay);
+            echoDelay.connect(echoFeed);
+            echoFeed.connect(echoDelay);
+            
+            distNode.connect(fxBlocks.harmonics.out);
+            echoDelay.connect(fxBlocks.harmonics.out);
+
+            // Output Limiter & Master Bus
+            limiterIn = ac.createGain();
+            limiterNode = ac.createDynamicsCompressor();
+            limiterNode.threshold.value = document.getElementById('limitThresh').value;
+            limiterNode.knee.value = 0.0; 
+            limiterNode.ratio.value = 20.0; 
+            limiterNode.attack.value = 0.001; 
+            limiterNode.release.value = 0.1;
+
+            limiterIn.connect(limiterNode);
+
+            masterGain = ac.createGain();
+            masterGain.gain.value = document.getElementById('gain').value;
+            analyser = ac.createAnalyser();
+            analyser.fftSize = 2048; 
+            destNode = ac.createMediaStreamDestination();
+
+            limiterNode.connect(masterGain);
+            masterGain.connect(analyser);
+            masterGain.connect(ac.destination);
+            masterGain.connect(destNode);
+
+            let mimeType = 'audio/ogg; codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'audio/webm; codecs=opus'; 
+            }
+            mediaRecorder = new MediaRecorder(destNode.stream, { mimeType: mimeType });
+            mediaRecorder.ondataavailable = e => chunks.push(e.data);
+            mediaRecorder.onstop = saveRecording;
+        }
+
+        // ============================
+        // DSP Math & Curves
+        // ============================
+        function processBitcrush(e) {
+            const inputBuffer = e.inputBuffer;
+            const outputBuffer = e.outputBuffer;
+            const bits = parseInt(document.getElementById('bits').value);
+            const norm = parseInt(document.getElementById('norm').value); 
+            const step = Math.pow(0.5, bits);
+
+            for (let channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
+                const inputData = inputBuffer.getChannelData(channel);
+                const outputData = outputBuffer.getChannelData(channel);
+
+                for (let i = 0; i < inputBuffer.length; i++) {
+                    const index = i - (i % norm);
+                    let sample = inputData[index];
+                    if (step < 1) sample = step * Math.floor(sample / step + 0.5);
+                    outputData[i] = sample;
+                }
+            }
+        }
+
+        // Simulates analog diode-ring soft clipping for true RM flavor
+        function makeDiodeCurve(amount) {
+            const k = parseFloat(amount) / 10; 
+            if (k === 0) return new Float32Array([-1, 1]); // Passthrough
+            
+            const n_samples = 44100;
+            const curve = new Float32Array(n_samples);
+            for (let i = 0; i < n_samples; ++i) {
+                let x = (i * 2) / n_samples - 1;
+                curve[i] = Math.sign(x) * (1 - Math.exp(-Math.abs(x) * (1 + k)));
+            }
+            return curve;
+        }
+
+        // Standard Harmonics Distortion Curve
+        function makeDistortionCurve(amount) {
+            const k = typeof amount === 'number' ? amount : 50;
+            if (k === 0) return new Float32Array([-1, 1]); // Safe passthrough
+            
+            const n_samples = 44100;
+            const curve = new Float32Array(n_samples);
+            const deg = Math.PI / 180;
+            for (let i = 0; i < n_samples; ++i) {
+                const x = i * 2 / n_samples - 1;
+                curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+            }
+            return curve;
+        }
+
+        function monitorDynamics() {
+            dynamicsInterval = setInterval(() => {
+                if(analyser) {
+                    const data = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteTimeDomainData(data);
+                    let max = 0;
+                    for(let i=0; i<data.length; i++) {
+                        const val = Math.abs((data[i] - 128) / 128);
+                        if(val > max) max = val;
+                    }
+                    const db = 20 * Math.log10(max || 0.0001); 
+                    const thresh = parseFloat(document.getElementById('limitThresh').value);
+                    if (db > (thresh - 2)) limitLed.classList.add('active');
+                    else limitLed.classList.remove('active');
+                }
+
+                if(gateAnalyser && gateGain) {
+                    if (document.getElementById('gateToggle').checked) {
+                        const gateData = new Uint8Array(gateAnalyser.frequencyBinCount);
+                        gateAnalyser.getByteTimeDomainData(gateData);
+                        let gateMax = 0;
+                        for(let i=0; i<gateData.length; i++) {
+                            const val = Math.abs((gateData[i] - 128) / 128);
+                            if(val > gateMax) gateMax = val;
+                        }
+                        const gateDb = 20 * Math.log10(gateMax || 0.0001);
+                        const gateThresh = parseFloat(document.getElementById('gateThresh').value);
+
+                        if (gateDb < gateThresh) {
+                            gateGain.gain.setTargetAtTime(0.001, ac.currentTime, 0.1); 
+                            gateLed.classList.remove('active');
+                        } else {
+                            gateGain.gain.setTargetAtTime(1.0, ac.currentTime, 0.02); 
+                            gateLed.classList.add('active');
+                        }
+                    } else {
+                        gateGain.gain.setTargetAtTime(1.0, ac.currentTime, 0.05);
+                        gateLed.classList.remove('active');
+                    }
+                }
+            }, 20); 
+        }
+
+        function saveRecording() {
+            const blob = new Blob(chunks, { 'type' : mediaRecorder.mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'VOID_PROCESS_' + Date.now() + '.ogg';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        }
+
+        // ============================
+        // UI Parameter Listeners
+        // ============================
+        document.getElementById('micGain').addEventListener('input', e => {
+            updateLabel('micGainVal', e.target.value);
+            if(micGainNode) micGainNode.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+
+        document.getElementById('gateThresh').addEventListener('input', e => updateLabel('gateThreshVal', e.target.value));
+
+        // True RM Section
+        document.getElementById('rmDrive').addEventListener('input', e => {
+            updateLabel('rmDriveVal', e.target.value);
+            if(rmDriveNode) rmDriveNode.curve = makeDiodeCurve(parseFloat(e.target.value));
+        });
+
+        document.getElementById('rmDepth').addEventListener('input', e => {
+            updateLabel('rmDepthVal', e.target.value);
+            const val = parseFloat(e.target.value);
+            if(rmWet && rmDry) {
+                rmWet.gain.setTargetAtTime(val, ac.currentTime, 0.02);
+                rmDry.gain.setTargetAtTime(1 - val, ac.currentTime, 0.02);
+            }
+        }); 
+
+        document.getElementById('carrierWave').addEventListener('change', e => { if(rmOsc) rmOsc.type = e.target.value; });
+        document.getElementById('lfoWave').addEventListener('change', e => { if(rmLfo) rmLfo.type = e.target.value; });
+
+        document.getElementById('freq').addEventListener('input', e => {
+            updateLabel('freqVal', e.target.value);
+            if(rmOsc) rmOsc.frequency.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+
+        document.getElementById('lfoRate').addEventListener('input', e => {
+            updateLabel('lfoRateVal', e.target.value);
+            if(rmLfo) rmLfo.frequency.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+
+        document.getElementById('lfoDepth').addEventListener('input', e => {
+            updateLabel('lfoDepthVal', e.target.value);
+            if(lfoAmp) lfoAmp.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+
+        // Other FX
+        document.getElementById('filterType').addEventListener('change', e => { if(filterNode) filterNode.type = e.target.value; });
+        
+        document.getElementById('filterFreq').addEventListener('input', e => {
+             updateLabel('filterFreqVal', e.target.value);
+             if(filterNode) filterNode.frequency.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+        
+        document.getElementById('filterQ').addEventListener('input', e => {
+            updateLabel('filterQVal', e.target.value);
+            if(filterNode) filterNode.Q.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+
+        document.getElementById('combDelay').addEventListener('input', e => {
+            updateLabel('combDelayVal', e.target.value);
+            if(combDelayNode) combDelayNode.delayTime.setTargetAtTime(parseFloat(e.target.value)/1000, ac.currentTime, 0.05);
+        });
+        
+        document.getElementById('combFeed').addEventListener('input', e => {
+            updateLabel('combFeedVal', e.target.value);
+            if(combFeedNode) combFeedNode.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+        
+        document.getElementById('combMix').addEventListener('input', e => {
+             updateLabel('combMixVal', e.target.value);
+             if(combWet && combDry) {
+                 combWet.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.02);
+                 combDry.gain.setTargetAtTime(1 - parseFloat(e.target.value), ac.currentTime, 0.02);
+             }
+        });
+
+        document.getElementById('bits').addEventListener('input', e => updateLabel('bitsVal', e.target.value));
+        document.getElementById('norm').addEventListener('input', e => updateLabel('normVal', e.target.value));
+        
+        document.getElementById('crushMix').addEventListener('input', e => {
+            updateLabel('crushMixVal', e.target.value);
+             if(crushWet && crushDry) {
+                 crushWet.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.02);
+                 crushDry.gain.setTargetAtTime(1 - parseFloat(e.target.value), ac.currentTime, 0.02);
+             }
+        });
+
+        document.getElementById('distortion').addEventListener('input', e => {
+            updateLabel('distVal', e.target.value);
+            if(distNode) distNode.curve = makeDistortionCurve(parseInt(e.target.value));
+        });
+        
+        document.getElementById('delayTime').addEventListener('input', e => {
+            updateLabel('delayTimeVal', e.target.value);
+            if(echoDelay) echoDelay.delayTime.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+        
+        document.getElementById('echoFeedback').addEventListener('input', e => {
+            updateLabel('echoFeedVal', e.target.value);
+            if(echoFeed) echoFeed.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+
+        document.getElementById('limitThresh').addEventListener('input', e => {
+            updateLabel('limitThreshVal', e.target.value);
+            if(limiterNode) limiterNode.threshold.value = parseFloat(e.target.value);
+        });
+
+        document.getElementById('gain').addEventListener('input', e => {
+            if(masterGain) masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.05);
+        });
+
+        function drawScope() {
+            if(!isRunning) return;
+            requestAnimationFrame(drawScope);
+            
+            const bufferLength = analyser.frequencyBinCount;
+            const data = new Uint8Array(bufferLength);
+            
+            ctx.fillStyle = 'rgba(13, 13, 13, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (visModeSel.value === 'wave') {
+                analyser.getByteTimeDomainData(data);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#00ff41';
+                ctx.beginPath();
+                
+                const sliceWidth = canvas.width * 1.0 / bufferLength;
+                let x = 0;
+                
+                for(let i = 0; i < bufferLength; i++) {
+                    const v = data[i] / 128.0;
+                    const y = v * canvas.height / 2;
+                    if(i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                    x += sliceWidth;
+                }
+                ctx.lineTo(canvas.width, canvas.height/2);
+                ctx.stroke();
+            } else {
+                analyser.getByteFrequencyData(data);
+                const barWidth = (canvas.width / bufferLength) * 3;
+                let barHeight;
+                let x = 0;
+                
+                for(let i = 0; i < bufferLength; i++) {
+                    barHeight = data[i] * 0.6;
+                    ctx.fillStyle = `rgb(${barHeight + 50}, 255, 65)`;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                    if(x > canvas.width) break;
+                }
+            }
+        }
+
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+    </script>
+</body>
+</html>
